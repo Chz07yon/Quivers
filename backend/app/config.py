@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     # OCR Optional Executable Path (Windows / Linux)
     TESSERACT_CMD: str | None = Field(default=None, description="Path to Tesseract OCR executable")
 
-    # Upload Limits
-    MAX_UPLOAD_SIZE_MB: int = 25
+    # Upload Limits (Strict 10 MB limit as specified in Phase 2)
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

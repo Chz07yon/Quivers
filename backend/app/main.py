@@ -12,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import get_settings
 from app.api.health import router as health_router
+from app.api.documents import router as documents_router
 
 # Configure logging
 logging.basicConfig(
@@ -91,6 +92,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include Routers
 app.include_router(health_router)
+app.include_router(documents_router)
 
 
 @app.get("/", tags=["Root"])
