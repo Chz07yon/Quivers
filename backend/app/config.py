@@ -36,7 +36,21 @@ class Settings(BaseSettings):
 
     # Database & Auth (Supabase PostgreSQL)
     SUPABASE_URL: str | None = Field(default=None, description="Supabase project URL")
-    SUPABASE_KEY: str | None = Field(default=None, description="Supabase API key")
+    SUPABASE_KEY: str | None = Field(default=None, description="Legacy Supabase API key")
+    SUPABASE_ANON_KEY: str | None = Field(default=None, description="Supabase publishable anon key")
+    SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None, description="Supabase secret service role key (backend only)")
+    SUPABASE_ROLE_KEY: str | None = Field(default=None, description="Alias for service role key")
+    SUPABASE_JWT_SECRET: str | None = Field(default=None, description="Supabase JWT secret for offline validation")
+
+    @property
+    def effective_supabase_key(self) -> str | None:
+        """Returns the most privileged backend key available (service role > anon > generic key)."""
+        return (
+            self.SUPABASE_SERVICE_ROLE_KEY
+            or self.SUPABASE_ROLE_KEY
+            or self.SUPABASE_ANON_KEY
+            or self.SUPABASE_KEY
+        )
 
     # OCR Optional Executable Path (Windows / Linux)
     TESSERACT_CMD: str | None = Field(default=None, description="Path to Tesseract OCR executable")
@@ -54,10 +68,10 @@ class Settings(BaseSettings):
         raise ValueError(f"Invalid CORS_ORIGINS: {v}")
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"),
+        env_file=(".env", "../.env", "backend.env", "../backend.env"),
         env_file_encoding="utf-8",
         extra="ignore",
-        case_sensitive=True,
+        case_sensitive=False,
     )
 
 

@@ -17,7 +17,10 @@ from app.models.document import (
     PageExtraction,
     DocumentExtractionSummary,
     PDFExtractionResponse,
+    TextChunk,
 )
+from app.services.chunker import smart_chunk_document
+from app.services.ocr_service import OCRService
 
 logger = logging.getLogger("quivers.pdf_extractor")
 
@@ -91,6 +94,7 @@ def extract_text_from_pdf_bytes(
         total_words = 0
         selectable_count = 0
         scanned_count = 0
+        ocr_pages_count = 0
 
         for page_index in range(total_pages):
             page = doc[page_index]
@@ -103,12 +107,32 @@ def extract_text_from_pdf_bytes(
             char_count = len(cleaned_text)
             word_count = len(cleaned_text.split()) if char_count > 0 else 0
 
+            ocr_applied = False
+            ocr_method = None
+
             # Detect whether page has selectable text
-            # A page with 0 selectable characters is considered image-only / scanned
-            if char_count == 0:
-                is_scanned = True
-                flag_reason = "No selectable digital text detected on this page. Scanned or image-only content flagged for Phase 8 OCR fallback."
-                scanned_count += 1
+            # A page with < 20 characters is considered image-only / scanned
+            if char_count < 20:
+                logger.info(
+                    "Page %d has sparse/no selectable digital text (%d chars). Executing Phase 8 Tesseract OCR fallback...",
+                    page_num,
+                    char_count,
+                )
+                ocr_result = OCRService.extract_text_from_page(page, language="eng", dpi=150)
+                if ocr_result.success and ocr_result.word_count > 0:
+                    cleaned_text = ocr_result.text
+                    char_count = ocr_result.character_count
+                    word_count = ocr_result.word_count
+                    ocr_applied = True
+                    ocr_method = ocr_result.method
+                    is_scanned = False
+                    flag_reason = f"Scanned page text recovered via {ocr_result.method} ({word_count} words in {ocr_result.duration_ms}ms)"
+                    selectable_count += 1
+                    ocr_pages_count += 1
+                else:
+                    is_scanned = True
+                    flag_reason = "No selectable digital text detected; OCR extraction found no recognizable text."
+                    scanned_count += 1
             else:
                 is_scanned = False
                 flag_reason = None
@@ -123,11 +147,17 @@ def extract_text_from_pdf_bytes(
                     text=cleaned_text,
                     character_count=char_count,
                     word_count=word_count,
-                    has_selectable_text=not is_scanned,
+                    has_selectable_text=(not is_scanned and word_count > 0),
                     is_flagged_for_ocr=is_scanned,
                     flag_reason=flag_reason,
+                    ocr_applied=ocr_applied,
+                    ocr_method=ocr_method,
                 )
             )
+
+        # Perform smart semantic chunking on the extracted pages
+        chunks = smart_chunk_document(pages, max_chunk_words=750)
+        chunk_strat = chunks[0].chunk_strategy if chunks else "page_group"
 
         summary = DocumentExtractionSummary(
             filename=filename,
@@ -138,22 +168,29 @@ def extract_text_from_pdf_bytes(
             total_words=total_words,
             selectable_pages_count=selectable_count,
             scanned_pages_count=scanned_count,
-            is_fully_digital=(scanned_count == 0),
+            is_fully_digital=(scanned_count == 0 and ocr_pages_count == 0),
+            total_chunks=len(chunks),
+            chunk_strategy=chunk_strat,
+            ocr_pages_processed=ocr_pages_count,
+            ocr_engine=OCRService.get_engine_info() if ocr_pages_count > 0 else None,
         )
 
         logger.info(
-            "Extracted PDF '%s': %d pages, %d words, %d scanned pages flagged",
+            "Extracted & chunked PDF '%s': %d pages, %d words, %d chunks (%s strategy)",
             filename,
             total_pages,
             total_words,
-            scanned_count,
+            len(chunks),
+            chunk_strat,
         )
 
         return PDFExtractionResponse(
             success=True,
-            message=f"Successfully extracted {total_pages} page(s) from '{filename}'.",
+            message=f"Successfully extracted {total_pages} page(s) and formed {len(chunks)} smart chunk(s) from '{filename}'.",
             summary=summary,
             pages=pages,
+            chunks=chunks,
+            total_chunks=len(chunks),
         )
 
     finally:

@@ -159,6 +159,18 @@ export function BackendHealthCard() {
                   {health.services.supabase_db}
                 </span>
               </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-zinc-800 border border-stone-100 dark:border-zinc-700/60">
+                <span className="text-stone-600 dark:text-zinc-300">PyMuPDF Engine:</span>
+                <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400">
+                  {health.services.pymupdf_engine}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-zinc-800 border border-stone-100 dark:border-zinc-700/60">
+                <span className="text-stone-600 dark:text-zinc-300">Phase 8 Tesseract OCR:</span>
+                <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400">
+                  {health.services.tesseract_ocr}
+                </span>
+              </div>
             </div>
           </div>
         </div>

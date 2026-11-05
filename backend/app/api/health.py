@@ -12,7 +12,7 @@ router = APIRouter(tags=["Health"])
 
 @router.get("/health")
 @router.get("/api/health")
-async def health_check(settings: Settings = Depends(get_settings)):
+def health_check(settings: Settings = Depends(get_settings)):
     """
     Returns system status, environment metadata, and service readiness checks.
     """
@@ -25,12 +25,15 @@ async def health_check(settings: Settings = Depends(get_settings)):
         pymupdf_status = "not_installed"
 
     # Check Tesseract availability
-    tesseract_status = "unconfigured"
+    tesseract_status = "unavailable"
     try:
-        import pytesseract
-        tesseract_status = "library_installed"
-    except Exception:
-        tesseract_status = "not_installed"
+        from app.services.ocr_service import OCRService
+        if OCRService.is_ocr_available():
+            tesseract_status = f"available ({OCRService.get_engine_info()})"
+        else:
+            tesseract_status = "traineddata_missing"
+    except Exception as exc:
+        tesseract_status = f"error ({str(exc)})"
 
     # Check Claude API configuration
     claude_status = "configured" if settings.ANTHROPIC_API_KEY else "pending_key (set in .env)"

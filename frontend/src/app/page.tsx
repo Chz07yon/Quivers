@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { UploadZone } from "@/components/UploadZone";
@@ -8,7 +8,10 @@ import { ArrowProgressBar } from "@/components/ArrowProgressBar";
 import { BullseyeFeedback } from "@/components/BullseyeFeedback";
 import { MyQuiverPreview } from "@/components/MyQuiverPreview";
 import { BackendHealthCard } from "@/components/BackendHealthCard";
+import { AuthVerificationCard } from "@/components/AuthVerificationCard";
 import { DesignSystemShowcase } from "@/components/DesignSystemShowcase";
+import { QuizRunner } from "@/components/QuizRunner";
+import { GeneratedQuestion } from "@/lib/api";
 import {
   FileText,
   Target,
@@ -18,9 +21,100 @@ import {
   Shield,
   Layers,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 
+const DEMO_QUESTIONS: GeneratedQuestion[] = [
+  {
+    arrow_order: 1,
+    question: "What is the fundamental mechanism used by Transformers to calculate relevance between tokens in a sequence?",
+    type: "mcq",
+    options: [
+      "Convolutional sliding filters across token pairs",
+      "Scaled dot-products between Query and Key vectors (Attention(Q, K, V))",
+      "Sequential hidden recurrent memory cell updates",
+      "Global average pooling across all vocabulary tokens",
+    ],
+    correct_answer: "Scaled dot-products between Query and Key vectors (Attention(Q, K, V))",
+    correct_index: 1,
+    explanation: "Attention(Q, K, V) = softmax(QK^T / sqrt(d_k)) * V computes scaled dot-product compatibility scores between query and key vectors to produce weighted value vectors.",
+    source_page: 1,
+    source_passage: "The Attention mechanism allows neural networks to focus on specific parts of an input sequence by computing compatibility scores between Query and Key vectors.",
+    bloom_level: "understanding",
+    difficulty: "medium",
+    heading: "1. Attention Mechanism",
+  },
+  {
+    arrow_order: 2,
+    question: "According to the document, why must Transformer models inject Positional Encoding into input embeddings?",
+    type: "mcq",
+    options: [
+      "Because the attention mechanism has no recurrence and is otherwise permutation-invariant to token order",
+      "To accelerate learning rates during stochastic gradient descent",
+      "To normalize layer activations before the feed-forward subnet",
+      "To encrypt token representations before multi-head projection",
+    ],
+    correct_answer: "Because the attention mechanism has no recurrence and is otherwise permutation-invariant to token order",
+    correct_index: 0,
+    explanation: "Because Transformer architectures discard recurrence and convolution, positional encodings are required to preserve sequence order information.",
+    source_page: 2,
+    source_passage: "Because Transformer models lack recurrence, they must inject positional information into input embeddings.",
+    bloom_level: "recall",
+    difficulty: "medium",
+    heading: "2. Positional Encoding",
+  },
+  {
+    arrow_order: 3,
+    question: "In the Quivers architecture concept, does each arrow represent an individual source-grounded question?",
+    type: "true_false",
+    options: ["True", "False"],
+    correct_answer: "True",
+    correct_index: 0,
+    explanation: "The Quivers design system explicitly defines each arrow as an individual source-grounded question, and the quiver holds the entire set.",
+    source_page: 1,
+    source_passage: "Concept: Each arrow represents an individual source-grounded question. The quiver holds the entire set.",
+    bloom_level: "recall",
+    difficulty: "easy",
+    heading: "1. Concept",
+  },
+  {
+    arrow_order: 4,
+    question: "Fill in the blank: Multi-Head Attention projects queries, keys, and values _____ times with different learned linear projections.",
+    type: "fill_in_the_blank",
+    options: ["h", "2h", "h/2", "h^2"],
+    correct_answer: "h",
+    correct_index: 0,
+    explanation: "Multi-Head Attention projects queries, keys, and values h times with different learned linear projections into lower dimensional subspaces.",
+    source_page: 3,
+    source_passage: "It projects queries, keys, and values h times with different learned linear projections.",
+    bloom_level: "application",
+    difficulty: "hard",
+    heading: "3. Multi-Head Attention",
+  },
+  {
+    arrow_order: 5,
+    question: "What is the primary role of the Quiver in this system?",
+    type: "mcq",
+    options: [
+      "It holds the entire set of questions forged from the document syllabus",
+      "It manages the database connection pool in the backend",
+      "It performs bitmap font rendering for scanned documents",
+      "It acts as a load balancer for API requests",
+    ],
+    correct_answer: "It holds the entire set of questions forged from the document syllabus",
+    correct_index: 0,
+    explanation: "The quiver represents the container holding all the arrows (questions) forged from the student's document.",
+    source_page: 1,
+    source_passage: "The quiver holds the entire set of questions forged from this syllabus.",
+    bloom_level: "understanding",
+    difficulty: "easy",
+    heading: "1. Concept",
+  },
+];
+
 export default function Home() {
+  const [showDemoQuiz, setShowDemoQuiz] = useState(false);
+
   const scrollToUpload = () => {
     document.getElementById("upload-section")?.scrollIntoView({
       behavior: "smooth",
@@ -85,6 +179,15 @@ export default function Home() {
                 <ArrowRight className="h-4 w-4" />
               </button>
 
+              <button
+                type="button"
+                onClick={() => setShowDemoQuiz(!showDemoQuiz)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-6 py-3.5 text-sm font-semibold text-amber-800 hover:bg-amber-500/20 dark:text-amber-300 dark:hover:bg-amber-500/20 transition-all cursor-pointer"
+              >
+                <Target className="h-4 w-4 text-amber-500" />
+                <span>{showDemoQuiz ? "Hide Quiz Arena" : "Launch Quiz Arena Demo (5 Arrows)"}</span>
+              </button>
+
               <a
                 href="#how-it-works"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 px-6 py-3.5 text-sm font-semibold text-stone-700 hover:bg-stone-100 hover:text-stone-950 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white transition-all"
@@ -93,6 +196,17 @@ export default function Home() {
                 <ChevronDown className="h-4 w-4" />
               </a>
             </div>
+
+            {/* LIVE QUIZ ARENA DEMO IF TOGGLED */}
+            {showDemoQuiz && (
+              <div className="mt-12 text-left">
+                <QuizRunner
+                  questions={DEMO_QUESTIONS}
+                  quizTitle="Attention & Multi-Head Self-Attention Study Guide"
+                  onExit={() => setShowDemoQuiz(false)}
+                />
+              </div>
+            )}
 
             {/* Upload Call-To-Action Dropzone */}
             <div className="mt-14">
@@ -224,6 +338,9 @@ export default function Home() {
               </p>
             </div>
             <BackendHealthCard />
+            <div className="mt-8">
+              <AuthVerificationCard />
+            </div>
           </div>
         </section>
 
